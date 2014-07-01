@@ -6,7 +6,9 @@ require 'jwt'
 
 module FuelSDK
   require 'fuelsdk/utils'
+  require 'fuelsdk/response'
   autoload :HTTPRequest, 'fuelsdk/http_request'
+  autoload :HTTPResponse, 'fuelsdk/http_response'
   autoload :Targeting, 'fuelsdk/targeting'
   autoload :Soap, 'fuelsdk/soap'
   autoload :Rest, 'fuelsdk/rest'
