@@ -3,18 +3,43 @@ module FuelSDK
 
     include FuelSDK::Targeting
 
-    def rest_client
-      self
+
+    def rest_get( url, properties={} )
+      url, properties = parse_properties url, properties
+      rest_request :get, url, {'params' => properties}
     end
 
-    def normalize_keys obj
-      if obj and obj.is_a? Hash
-        obj.keys.each do |k|
-          obj[(k.to_sym rescue k) || k] = obj.delete(k)
-        end
-      end
-      obj
+
+    def rest_delete( url, properties={} )
+      url, properties = parse_properties url, properties
+      rest_request :delete, url
     end
+
+
+    def rest_patch( url, properties={} )
+      url, payload = parse_properties url, properties
+      rest_request :patch, url, {'data' => payload,
+        'content_type' => 'application/json'}
+    end
+
+
+    def rest_post( url, properties={} )
+      url, payload = parse_properties url, properties
+      rest_request :post, url, {'data' => payload,
+        'content_type' => 'application/json'}
+    end
+
+
+    #---------------------------------------------------------------------------
+    # Utility Methods
+    #---------------------------------------------------------------------------
+
+    def parse_properties url, properties
+      url_properties = get_url_properties url, properties
+      url = complete_url url, url_properties
+      [url, properties]
+    end
+
 
     def get_url_properties url, properties
       url_property_names = url.scan(/(%{(.+?)})/).collect{|frmt, name| name}
@@ -27,6 +52,7 @@ module FuelSDK
       url_properties
     end
 
+
     def complete_url url, url_properties
       normalize_keys(url_properties)
       url = url % url_properties if url_properties
@@ -35,42 +61,31 @@ module FuelSDK
       raise "#{ex.message} to complete #{url}"
     end
 
-    def parse_properties url, properties
-      url_properties = get_url_properties url, properties
-      url = complete_url url, url_properties
-      [url, properties]
+
+    def normalize_keys obj
+      if obj.is_a? Hash
+        obj.keys.each do |k|
+          next if k.is_a?(Symbol)
+          obj[k.to_sym] = obj.delete(k) if k.respond_to?(:to_sym)
+        end
+      end
+      obj
     end
 
-    def rest_get url, properties={}
-      url, properties = parse_properties url, properties
-      rest_request :get, url, {'params' => properties}
-    end
 
-    def rest_delete url, properties={}
-      url, properties = parse_properties url, properties
-      rest_request :delete, url
-    end
-
-    def rest_patch url, properties={}
-      url, payload = parse_properties url, properties
-      rest_request :patch, url, {'data' => payload,
-        'content_type' => 'application/json'}
-    end
-
-    def rest_post url, properties={}
-      url, payload = parse_properties url, properties
-      rest_request :post, url, {'data' => payload,
-        'content_type' => 'application/json'}
-    end
+    #---------------------------------------------------------------------------
+    # Private methods
+    #---------------------------------------------------------------------------
 
     private
-      def rest_request action, url, options={}		
+
+      def rest_request action, url, options={}
         retried = false
         begin
-          #Try to refresh the token and if we do then we need to regenerate the header as well. 
-          self.refresh 
+          #Try to refresh the token and if we do then we need to regenerate the header as well.
+          self.refresh
           (options['params'] ||= {}).merge! 'access_token' => access_token
-          rsp = rest_client.send(action, url, options)
+          rsp = self.send(action, url, options)
           raise 'Unauthorized' if rsp.message == 'Unauthorized'
         rescue
           raise if retried

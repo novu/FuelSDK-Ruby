@@ -1,116 +1,58 @@
+#
+# Contains object definitions for the following classes
+#
+# Campaign          < Objects::Base
+#   Asset           < Objects::Base
+# BounceEvent       < Objects::Base
+# ClickEvent        < Objects::Base
+# ContentArea       < Objects::Base
+# DataFolder        < Objects::Base
+# Email             < Objects::Base
+#   SendDefinition  < Objects::Base
+# Import            < Objects::Base
+# List              < Objects::Base
+#   Subscriber      < Objects::Base
+# OpenEvent         < Objects::Base
+# SentEvent         < Objects::Base
+# Subscriber        < Objects::Base
+# UnsubEvent        < Objects::Base
+# ProfileAttribute  < Objects::Base
+# TriggeredSend     < Objects::Base
+# DataExtension     < Objects::Base
+#   Column          < Objects::Base
+#   Row             < Objects::Base
+# Get               < Objects::Base
+# Post              < Objects::Base
+# Delete            < Objects::Base
+# Patch             < Objects::Base
+
+
+
 module FuelSDK
+
+
+  #------------------------------------------------------------------------------------
+  # Base class
+  #------------------------------------------------------------------------------------
+
   module Objects
-    module Soap
-      module Read
-        attr_accessor :filter
-        def get _id=nil
-          client.soap_get _id||id, properties, filter
-        end
-
-        def info
-          client.soap_describe id
-        end
-      end
-
-      module CUD #create, update, delete
-        def post
-          if self.respond_to?('folder_property') && !self.folder_id.nil?
-			properties[self.folder_property]  = self.folder_id
-		  elsif self.respond_to?('folder_property') && !self.folder_property.nil? && !client.package_name.nil? then 
-			  if client.package_folders.nil? then
-				  getPackageFolder = ET_Folder.new
-				  getPackageFolder.authStub = client
-				  getPackageFolder.properties = ["ID", "ContentType"]
-				  getPackageFolder.filter = {"Property" => "Name", "SimpleOperator" => "equals", "Value" => client.package_name}
-				  resultPackageFolder = getPackageFolder.get
-				  if resultPackageFolder.status then 
-					  client.package_folders = {}
-					  resultPackageFolder.results.each do |value|
-						  client.package_folders[value[:content_type]] = value[:id]
-					  end
-				  else
-					  raise "Unable to retrieve folders from account due to: #{resultPackageFolder.message}"
-				  end 
-			  end 
-			  
-			  if !client.package_folders.has_key?(self.folder_media_type) then  
-				  if client.parentFolders.nil? then
-					  parentFolders = ET_Folder.new
-					  parentFolders.authStub = client
-					  parentFolders.properties = ["ID", "ContentType"]
-					  parentFolders.filter = {"Property" => "ParentFolder.ID", "SimpleOperator" => "equals", "Value" => "0"}
-					  resultParentFolders = parentFolders.get
-					  if resultParentFolders.status then 
-						  client.parent_folders = {}
-						  resultParentFolders.results.each do |value|
-							  client.parent_folders[value[:content_type]] = value[:id]
-						  end
-					  else
-						  raise "Unable to retrieve folders from account due to: #{resultParentFolders.message}"
-					  end
-				  end
-				  
-				  newFolder = ET_Folder.new
-				  newFolder.authStub = client
-				  newFolder.properties = {"Name" => client.package_name, "Description" => client.package_name, "ContentType"=> self.folder_media_type, "IsEditable"=>"true", "ParentFolder" => {"ID" => client.parentFolders[self.folder_media_type]}}
-				  folderResult = newFolder.post
-				  if folderResult.status then
-					  client.package_folders[self.folder_media_type]  = folderResult.results[0][:new_id]
-				  else 
-					  raise "Unable to create folder for Post due to: #{folderResult.message}"
-				  end 
-				  
-			  end 			
-			  properties[self.folder_property] = client.package_folders[self.folder_media_type]
-		  end
-          client.soap_post id, properties
-        end
-
-        def patch
-          client.soap_patch id, properties
-        end
-
-        def delete
-          client.soap_delete id, properties
-        end
-      end
-    end
-
-    module Rest
-      module Read
-        def get
-          client.rest_get id, properties
-        end
-      end
-
-      module CUD
-        def post
-          client.rest_post id, properties
-        end
-
-        def patch
-          client.rest_patch id, properties
-        end
-
-        def delete
-          client.rest_delete id, properties
-        end
-      end
-    end
-
     class Base
       attr_accessor :properties, :client
       attr_reader :id
+
+      def initialize(client=nil)
+        self.client = client
+      end
 
       alias props= properties= # backward compatibility
       alias authStub= client= # backward compatibility
 
       def properties
-         if @properties.kind_of? Array
-            @properties           
-         else
-            [@properties].compact
-         end 
+        if @properties.kind_of? Array
+          @properties
+        else
+          [@properties].compact
+        end
       end
 
       def id
@@ -119,40 +61,86 @@ module FuelSDK
 
       class << self
         def id
-          self.name.split('::').pop
+          self.name.split('::').last
         end
       end
     end
   end
 
-  class BounceEvent < Objects::Base
-	attr_accessor :get_since_last_batch
-    include Objects::Soap::Read
+
+  #------------------------------------------------------------------------------------
+  # REST objects
+  #------------------------------------------------------------------------------------
+
+
+  class Campaign < Objects::Base
+    include FuelSDK::Rest::Read
+    include FuelSDK::Rest::CUD
+
+    def properties
+      @properties ||= {}
+      @properties['id'] ||= ''
+      @properties
+    end
+
+    def id
+      "https://www.exacttargetapis.com/hub/v1/campaigns/%{id}"
+    end
+
+    class Asset < Objects::Base
+      include FuelSDK::Rest::Read
+      include FuelSDK::Rest::CUD
+
+      def properties
+        @properties ||= {}
+        @properties['assetId'] ||= ''
+        @properties
+      end
+
+      def id
+        'https://www.exacttargetapis.com/hub/v1/campaigns/%{id}/assets/%{assetId}'
+      end
+    end
   end
+
+
+  #------------------------------------------------------------------------------------
+  # SOAP objects
+  #------------------------------------------------------------------------------------
+
+
+  class BounceEvent < Objects::Base
+	  attr_accessor :get_since_last_batch
+    include FuelSDK::Soap::Read
+  end
+
 
   class ClickEvent < Objects::Base
-	attr_accessor :get_since_last_batch
-    include Objects::Soap::Read
+	  attr_accessor :get_since_last_batch
+    include FuelSDK::Soap::Read
   end
+
 
   class ContentArea < Objects::Base
-    include Objects::Soap::Read
-    include Objects::Soap::CUD
-	attr_accessor :folder_id
+    include FuelSDK::Soap::Read
+    include FuelSDK::Soap::CUD
+  	attr_accessor :folder_id
 
-    def folder_property 
+    def folder_property
       'CategoryID'
-    end 
-    
+    end
+
     def folder_media_type
       'content'
-    end 
+    end
   end
 
+
   class DataFolder < Objects::Base
-    include Objects::Soap::Read
-    include Objects::Soap::CUD
+    include FuelSDK::Soap::Read
+    include FuelSDK::Soap::CUD
   end
+
 
   class Folder < DataFolder
     class << self
@@ -162,209 +150,216 @@ module FuelSDK
     end
   end
 
-  class Email < Objects::Base
-    include Objects::Soap::Read
-    include Objects::Soap::CUD
-	attr_accessor :folder_id
-	
-	def folder_property 
-		'CategoryID'
-	end 
 
-	def folder_media_type
-		'email'
-	end 
-  
+  class Email < Objects::Base
+    include FuelSDK::Soap::Read
+    include FuelSDK::Soap::CUD
+  	attr_accessor :folder_id
+
+  	def folder_property
+  		'CategoryID'
+  	end
+
+  	def folder_media_type
+  		'email'
+  	end
+
     class SendDefinition < Objects::Base
-      include Objects::Soap::Read
-      include Objects::Soap::CUD
-	  attr_accessor :folder_id
-	  
+      include FuelSDK::Soap::Read
+      include FuelSDK::Soap::CUD
+	    attr_accessor :folder_id
+
       def id
         'EmailSendDefinition'
       end
 
-      def folder_property 
+      def folder_property
         'CategoryID'
-      end 
-      
+      end
+
       def folder_media_type
         'userinitiatedsends'
-      end 
-     
+      end
 
       def send
         perform_response = client.soap_perform id, 'start' , properties
         if perform_response.status then
           @last_task_id = perform_response.results[0][:result][:task][:id]
-        end 
+        end
         perform_response
       end
 
       def status
-        client.soap_get "Send", ['ID','CreatedDate', 'ModifiedDate', 'Client.ID', 'Email.ID', 'SendDate','FromAddress','FromName','Duplicates','InvalidAddresses','ExistingUndeliverables','ExistingUnsubscribes','HardBounces','SoftBounces','OtherBounces','ForwardedEmails','UniqueClicks','UniqueOpens','NumberSent','NumberDelivered','NumberTargeted','NumberErrored','NumberExcluded','Unsubscribes','MissingAddresses','Subject','PreviewURL','SentDate','EmailName','Status','IsMultipart','SendLimit','SendWindowOpen','SendWindowClose','BCCEmail','EmailSendDefinition.ObjectID','EmailSendDefinition.CustomerKey'], {'Property' => 'ID','SimpleOperator' => 'equals','Value' => @last_task_id}
+        client.soap_get 'Send', ['ID','CreatedDate', 'ModifiedDate', 'Client.ID', 'Email.ID', 'SendDate','FromAddress','FromName','Duplicates','InvalidAddresses','ExistingUndeliverables','ExistingUnsubscribes','HardBounces','SoftBounces','OtherBounces','ForwardedEmails','UniqueClicks','UniqueOpens','NumberSent','NumberDelivered','NumberTargeted','NumberErrored','NumberExcluded','Unsubscribes','MissingAddresses','Subject','PreviewURL','SentDate','EmailName','Status','IsMultipart','SendLimit','SendWindowOpen','SendWindowClose','BCCEmail','EmailSendDefinition.ObjectID','EmailSendDefinition.CustomerKey'], {'Property' => 'ID','SimpleOperator' => 'equals','Value' => @last_task_id}
       end
-      
+
       private
       attr_accessor :last_task_id
-      
+
     end
   end
 
 
-	
   class Import < Objects::Base
-    include Objects::Soap::Read
-    include Objects::Soap::CUD
-    
+    include FuelSDK::Soap::Read
+    include FuelSDK::Soap::CUD
 
     def id
-          'ImportDefinition'
+      'ImportDefinition'
     end
-  
+
     def post
-      originalProp = properties        
+      originalProp = properties
       cleanProps
       obj = super
       properties = originalProp
       return obj
     end
-    
+
     def patch
-      originalProp = properties        
+      originalProp = properties
       cleanProps
       obj = super
       properties = originalProp
       return obj
-    end    
-    
+    end
+
     def start
       perform_response = client.soap_perform id, 'start' , properties
       if perform_response.status then
         @last_task_id = perform_response.results[0][:result][:task][:id]
-      end 
+      end
       perform_response
     end
-    
+
     def status
-      client.soap_get "ImportResultsSummary", ['ImportDefinitionCustomerKey','TaskResultID','ImportStatus','StartDate','EndDate','DestinationID','NumberSuccessful','NumberDuplicated','NumberErrors','TotalRows','ImportType'], {'Property' => 'TaskResultID','SimpleOperator' => 'equals','Value' => @last_task_id}
+      client.soap_get 'ImportResultsSummary', ['ImportDefinitionCustomerKey','TaskResultID','ImportStatus','StartDate','EndDate','DestinationID','NumberSuccessful','NumberDuplicated','NumberErrors','TotalRows','ImportType'], {'Property' => 'TaskResultID','SimpleOperator' => 'equals','Value' => @last_task_id}
     end
-    
+
     private
+
     attr_accessor :last_task_id
-    
+
     def cleanProps
-        # If the ID property is specified for the destination then it must be a list import
-        if properties.has_key?('DestinationObject') then
-            if properties['DestinationObject'].has_key?('ID') then
-                properties[:attributes!] = { 'DestinationObject' => { 'xsi:type' => 'tns:List'}} 
-            end 
-        end 
-    end 
+      # If the ID property is specified for the destination then it must be a list import
+      if properties.has_key?('DestinationObject') then
+        if properties['DestinationObject'].has_key?('ID') then
+          properties[:attributes!] = { 'DestinationObject' => { 'xsi:type' => 'tns:List'}}
+        end
+      end
+    end
   end
-  
-  
+
+
   class List < Objects::Base
-    include Objects::Soap::Read
-    include Objects::Soap::CUD
-	attr_accessor :folder_id
-	
-	def folder_property 
-		'Category'
-	end 
-	
-	def folder_media_type
-		'list'
-	end 
+    include FuelSDK::Soap::Read
+    include FuelSDK::Soap::CUD
+    attr_accessor :folder_id
+
+  	def folder_property
+  		'Category'
+  	end
+
+  	def folder_media_type
+  		'list'
+  	end
 
     class Subscriber < Objects::Base
-      include Objects::Soap::Read
+      include FuelSDK::Soap::Read
       def id
         'ListSubscriber'
       end
     end
   end
 
+
   class OpenEvent < Objects::Base
-	attr_accessor :get_since_last_batch
-    include Objects::Soap::Read
+  	attr_accessor :get_since_last_batch
+    include FuelSDK::Soap::Read
   end
+
 
   class SentEvent < Objects::Base
-	attr_accessor :get_since_last_batch
-    include Objects::Soap::Read
+	  attr_accessor :get_since_last_batch
+    include FuelSDK::Soap::Read
   end
+
 
   class Subscriber < Objects::Base
-    include Objects::Soap::Read
-    include Objects::Soap::CUD
+    include FuelSDK::Soap::Read
+    include FuelSDK::Soap::CUD
   end
 
+
   class UnsubEvent < Objects::Base
-	attr_accessor :get_since_last_batch
-    include Objects::Soap::Read
+  	attr_accessor :get_since_last_batch
+    include FuelSDK::Soap::Read
   end
-  
+
+
   class ProfileAttribute < Objects::Base
     def get
-      client.soap_describe "Subscriber"
+      client.soap_describe 'Subscriber'
     end
 
     def post
-      client.soap_configure "PropertyDefinition","create", properties
+      client.soap_configure 'PropertyDefinition','create', properties
     end
 
     def delete
-      client.soap_configure "PropertyDefinition","delete", properties
+      client.soap_configure 'PropertyDefinition','delete', properties
     end
 
     def patch
-      client.soap_configure "PropertyDefinition","update", properties
+      client.soap_configure 'PropertyDefinition','update', properties
     end
   end
 
+
   class TriggeredSend < Objects::Base
-    include Objects::Soap::Read
-    include Objects::Soap::CUD
-	attr_accessor :folder_id, :subscribers
+    include FuelSDK::Soap::Read
+    include FuelSDK::Soap::CUD
+  	attr_accessor :folder_id, :subscribers
+
     def id
       'TriggeredSendDefinition'
     end
 
-    def folder_property 
+    def folder_property
       'CategoryID'
-    end 
-    
+    end
+
     def folder_media_type
       'triggered_send'
-    end 
+    end
 
     def send
       if self.properties.is_a? Array then
         tscall = []
         self.properties.each{ |p|
-          tscall.push({"TriggeredSendDefinition" => {"CustomerKey" => p["CustomerKey"]}, "Subscribers" => p["Subscribers"]})
+          tscall.push({'TriggeredSendDefinition' => {'CustomerKey' => p['CustomerKey']}, 'Subscribers' => p['Subscribers']})
         }
       else
-        tscall = {"TriggeredSendDefinition" => self.properties, "Subscribers" => @subscribers}	
+        tscall = {'TriggeredSendDefinition' => self.properties, 'Subscribers' => @subscribers}
       end
       client.soap_post 'TriggeredSend', tscall
     end
   end
 
-  class DataExtension < Objects::Base
-    include Objects::Soap::Read
-    include Objects::Soap::CUD
-    attr_accessor :fields, :folder_id
-	
-	def folder_property 
-	  'CategoryID'
-	end 
 
-	def folder_media_type
-	  'dataextension'
-	end 
-	
+  class DataExtension < Objects::Base
+    include FuelSDK::Soap::Read
+    include FuelSDK::Soap::CUD
+    attr_accessor :fields, :folder_id
+
+  	def folder_property
+  	  'CategoryID'
+  	end
+
+  	def folder_media_type
+  	  'dataextension'
+  	end
+
     alias columns= fields= # backward compatibility
 
     def post
@@ -377,23 +372,36 @@ module FuelSDK
       super
     end
 
+
     class Column < Objects::Base
-      include Objects::Soap::Read
+      include FuelSDK::Soap::Read
+
       def id
         'DataExtensionField'
       end
+
       def get
-        if filter and filter.kind_of? Hash and \
-          filter.include? 'Property' and filter['Property'] == 'CustomerKey'
-          filter['Property'] = 'DataExtension.CustomerKey'
+        if filter.kind_of? Hash
+          # %% filter.include? 'Property' and filter['Property'] == 'CustomerKey'
+          if property_key = filter.keys.detect{|p| p.to_s.downcase == 'property' }
+            if filter[property_key].to_s.downcase == 'customerkey'
+              filter[property_key] = 'DataExtension.CustomerKey'
+            end
+          end
         end
+
+        #   ['Property']||filter['Property']
+        #   filter.include? 'Property' and filter['Property'] == 'CustomerKey'
+        #   filter['Property'] = 'DataExtension.CustomerKey'
+        # end
         super
       end
     end
 
+
     class Row < Objects::Base
-      include Objects::Soap::Read
-      include Objects::Soap::CUD
+      include FuelSDK::Soap::Read
+      include FuelSDK::Soap::CUD
 
       attr_accessor :name, :customer_key
 
@@ -410,131 +418,155 @@ module FuelSDK
       end
 
       def name
-        unless @name
-          retrieve_required
-        end
-        @name
+        @name ||= lookup_name_using_customer_key
       end
 
       def customer_key
-        unless @customer_key
-          retrieve_required
-        end
-        @customer_key
+        @customer_key ||= lookup_customer_key_using_name
       end
 
       def post
-        munge_properties self.properties
+        self.properties = munge_properties
         super
       end
 
       def patch
-        munge_properties self.properties
+        self.properties = munge_properties
         super
       end
 
       def delete
-        munge_keys self.properties
+        self.properties = munge_keys
         super
       end
 
-      private
-        #::TODO::
-        # opportunity for meta programming here... but need to get this out the door
-        def munge_keys d
-			if d.kind_of? Array
-			  d.each do |o|
+      # private
 
-				next if explicit_keys(o) && explicit_customer_key(o)
+      #::TODO::
+      # opportunity for meta programming here... but need to get this out the door
+      def munge_keys(target=nil)
+        target ||= self.properties
+        puts '='*100
+        puts "munging KEYS #{target.class}: #{target}"
+        puts '='*100
+  			if target.kind_of? Array
 
-				formatted = []
-				o['CustomerKey'] = customer_key unless explicit_customer_key o
-				unless explicit_properties(o)
-				  o.each do |k, v|
-					next if k == 'CustomerKey'
-					formatted.concat FuelSDK.format_name_value_pairs k => v
-					o.delete k
-				  end
-				  o['Keys'] = {'Key' => formatted }
-				end
-			  end
-			else 
-				formatted = []
-				d.each do |k, v|
-					next if k == 'CustomerKey'
-					formatted.concat FuelSDK.format_name_value_pairs k => v
-					d.delete k
-				end
-				d['CustomerKey'] = customer_key
-				d['Keys'] = {'Key' => formatted }
-			end
-        end
-
-        def explicit_keys h
-          h['Keys'] and h['Keys']['Key']
-        end
-
-        def munge_properties d
-			if d.kind_of? Array
-			  d.each do |o|
-				next if explicit_properties(o) && explicit_customer_key(o)
-
-				formatted = []
-				o['CustomerKey'] = customer_key unless explicit_customer_key o
-				unless explicit_properties(o)
-				  o.each do |k, v|
-					next if k == 'CustomerKey'
-					formatted.concat FuelSDK.format_name_value_pairs k => v
-					o.delete k
-				  end
-				  o['Properties'] = {'Property' => formatted }
-				end
-			  end
-			else 
-				formatted = []
-				d.each do |k, v|
-					formatted.concat FuelSDK.format_name_value_pairs k => v
-					d.delete k
-				end
-				d['CustomerKey'] = customer_key
-				d['Properties'] = {'Property' => formatted }
-			end 
-        end
-
-        def explicit_properties h
-          h['Properties'] and h['Properties']['Property']
-        end
-
-        def explicit_customer_key h
-          h['CustomerKey']
-        end
-
-        def retrieve_required
-          # have to use instance variables so we don't recursivelly retrieve_required
-          if !@name && !@customer_key
-            raise 'Unable to process DataExtension::Row ' \
-              'request due to missing CustomerKey and Name'
-          end
-          if !@name || !@customer_key
-            filter = {
-              'Property' => @name.nil? ? 'CustomerKey' : 'Name',
-              'SimpleOperator' => 'equals',
-              'Value' => @customer_key || @name
-            }
-            rsp = client.soap_get 'DataExtension', ['Name', 'CustomerKey'], filter
-            if rsp.success? && rsp.results.count == 1
-              self.name = rsp.results.first[:name]
-              self.customer_key = rsp.results.first[:customer_key]
+          target.map do |hash|
+            if hash['CustomerKey'] && hash['Keys'] && hash['Keys']['Key']
+              hash # looks good. Keep it
             else
-              raise 'Unable to process DataExtension::Row'
+              munge_keys(hash)
             end
           end
+
+  			else
+          clean_props = hash_without_customer_key(target)
+          {
+            'CustomerKey' => customer_key,
+  				  'Keys' => {'Key' => FuelSDK.format_props(clean_props) }
+          }
+  			end
+      end
+
+      def munge_properties(target=nil)
+        target ||= self.properties
+        puts 'm'*100
+        puts "munging PROPERTIES #{target.class}: #{target}"
+        puts 'm'*100
+  			if target.kind_of? Array
+  			  target.map do |hash|
+  				  if has_property_key_already(hash) && hash['CustomerKey']
+              hash # looks good. Keep it
+            else
+              munge_properties(hash)
+            end
+          end
+  			else
+          clean_props = hash_without_customer_key(target)
+          {
+            'CustomerKey' => customer_key,
+            'Properties' => {'Property' => FuelSDK.format_props(clean_props) }
+          }
+  			end
+      end
+
+      def has_property_key_already h
+        h['Properties'] and h['Properties']['Property']
+      end
+
+      def hash_without_customer_key(hash)
+        if hash['CustomerKey']
+          hash = hash.dup
+          hash.delete('CustomerKey')
         end
+        hash
+      end
+
+      def lookup_name_using_customer_key
+        return @name if @name
+        raise_missing_properties_error if @customer_key.nil?
+        filter = property_equals_filter('CustomerKey', @customer_key)
+        assign_required_properties(filter)
+        self.name
+      end
+
+      def lookup_customer_key_using_name
+        return @customer_key if @customer_key
+        raise_missing_properties_error if @name.nil?
+        filter = property_equals_filter('Name', @name)
+        assign_required_properties(filter)
+        self.customer_key
+      end
+
+      def raise_missing_properties_error
+        raise 'Unable to process DataExtension::Row ' \
+            'request due to missing both CustomerKey and Name'
+      end
+
+      def property_equals_filter(key, value)
+        {
+          'Property' => key,
+          'SimpleOperator' => 'equals',
+          'Value' => value
+        }
+      end
+
+      def assign_required_properties(filter)
+        rsp = client.soap_get 'DataExtension', ['Name', 'CustomerKey'], filter
+        if rsp.success? && rsp.results.count == 1
+          self.name = rsp.results.first[:name]
+          self.customer_key = rsp.results.first[:customer_key]
+        else
+          raise 'Unable to process DataExtension::Row'
+        end
+      end
+
+      def require_name_and_customer_key
+        # have to use instance variables so we don't recursivelly require_name_and_customer_key
+        if !@name && !@customer_key
+          raise 'Unable to process DataExtension::Row ' \
+            'request due to missing both CustomerKey and Name'
+        end
+        if !@name || !@customer_key
+          filter = {
+            'Property' => @name.nil? ? 'CustomerKey' : 'Name',
+            'SimpleOperator' => 'equals',
+            'Value' => @customer_key || @name
+          }
+          rsp = client.soap_get 'DataExtension', ['Name', 'CustomerKey'], filter
+          if rsp.success? && rsp.results.count == 1
+            self.name = rsp.results.first[:name]
+            self.customer_key = rsp.results.first[:customer_key]
+          else
+            raise 'Unable to process DataExtension::Row'
+          end
+        end
+      end
     end
 
     private
 
-      def munge_fields d
+    def munge_fields d
 		  # maybe one day will make it smart enough to zip properties and fields if count is same?
 		  if d.kind_of? Array and d.count > 1 and (fields and !fields.empty?)
 			  # we could map the field to all DataExtensions, but lets make user be explicit.
@@ -542,69 +574,41 @@ module FuelSDK
 			  # be a single DataExtension Defined in a Hash
 			  raise 'Unable to handle muliple DataExtension definitions and a field definition'
 		  end
-		  
+
 		  d.each do |de|
-			  
+
 			  if (explicit_fields(de) and (de['columns'] || de['fields'] || has_fields)) or
 				  (de['columns'] and (de['fields'] || has_fields)) or
 				  (de['fields'] and has_fields)
 				  raise 'Fields are defined in too many ways. Please only define once.' # ahhh what, to do...
 			  end
-			  
+
 			  # let users who chose, to define fields explicitly within the hash definition
 			  next if explicit_fields de
-			  
+
 			  de['Fields'] = {'Field' => de['columns'] || de['fields'] || fields}
 			  # sanitize
 			  de.delete 'columns'
 			  de.delete 'fields'
 			  raise 'DataExtension needs atleast one field.' unless de['Fields']['Field']
 		  end
-      end
-
-      def explicit_fields h
-        h['Fields'] and h['Fields']['Field']
-      end
-
-      def has_fields
-        fields and !fields.empty?
-      end
-  end
-
-  class Campaign < Objects::Base
-    include Objects::Rest::Read
-    include Objects::Rest::CUD
-
-    def properties
-      @properties ||= {}
-      @properties.merge! 'id' => '' unless @properties.include? 'id'
-      @properties
     end
 
-    def id
-      "https://www.exacttargetapis.com/hub/v1/campaigns/%{id}"
+    def explicit_fields h
+      h['Fields'] and h['Fields']['Field']
     end
 
-    class Asset < Objects::Base
-      include Objects::Rest::Read
-      include Objects::Rest::CUD
-
-      def properties
-        @properties ||= {}
-        @properties.merge! 'assetId' => '' unless @properties.include? 'assetId'
-        @properties
-      end
-
-      def id
-        'https://www.exacttargetapis.com/hub/v1/campaigns/%{id}/assets/%{assetId}'
-      end
+    def has_fields
+      fields and !fields.empty?
     end
   end
-  
+
+
   # Direct Verb Access Section
 
+
   class Get < Objects::Base
-    include Objects::Soap::Read
+    include FuelSDK::Soap::Read
     attr_accessor :id
 
     def initialize client, id, properties, filter
@@ -615,7 +619,7 @@ module FuelSDK
     end
 
     def get
-        super id
+      super id
     end
 
     class << self
@@ -626,21 +630,22 @@ module FuelSDK
       end
     end
   end
-  
+
+
   class Post < Objects::Base
-    include Objects::Soap::CUD
+    include FuelSDK::Soap::CUD
     attr_accessor :id
-  
+
     def initialize client, id, properties
       self.properties = properties
       self.client = client
       self.id = id
     end
-  
+
     def post
       super
     end
-  
+
     class << self
       def new client, id, properties=nil
         o = self.allocate
@@ -648,22 +653,23 @@ module FuelSDK
         return o.post
       end
     end
-  end  
-  
+  end
+
+
   class Delete < Objects::Base
-    include Objects::Soap::CUD
+    include FuelSDK::Soap::CUD
     attr_accessor :id
-  
+
     def initialize client, id, properties
       self.properties = properties
       self.client = client
       self.id = id
     end
-  
+
     def delete
       super
     end
-  
+
     class << self
       def new client, id, properties=nil
         o = self.allocate
@@ -671,29 +677,30 @@ module FuelSDK
         return o.delete
       end
     end
-  end    
+  end
+
 
   class Patch < Objects::Base
-      include Objects::Soap::CUD
-      attr_accessor :id
-    
-      def initialize client, id, properties
-        self.properties = properties
-        self.client = client
-        self.id = id
+    include FuelSDK::Soap::CUD
+    attr_accessor :id
+
+    def initialize client, id, properties
+      self.properties = properties
+      self.client = client
+      self.id = id
+    end
+
+    def patch
+      super
+    end
+
+    class << self
+      def new client, id, properties=nil
+        o = self.allocate
+        o.send :initialize, client, id, properties
+        return o.patch
       end
-    
-      def patch
-        super
-      end
-    
-      class << self
-        def new client, id, properties=nil
-          o = self.allocate
-          o.send :initialize, client, id, properties
-          return o.patch
-        end
-      end
-  end      
-  
+    end
+  end
+
 end

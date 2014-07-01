@@ -1,83 +1,12 @@
 require 'savon'
 module FuelSDK
-
-  class SoapResponse < FuelSDK::Response
-
-    def continue
-      rsp = nil
-      if more?
-       rsp = unpack @client.soap_client.call(:retrieve, :message => {'ContinueRequest' => request_id})
-      else
-        puts 'No more data'
-      end
-
-      rsp
-    end
-
-    private
-      def unpack_body raw
-        @body = raw.body
-        @request_id = raw.body[raw.body.keys.first][:request_id]
-        unpack_msg raw
-      rescue
-        @message = raw.http.body
-        @body = raw.http.body unless @body
-      end
-
-      def unpack raw
-        @code = raw.http.code
-        unpack_body raw
-        @success = @message == 'OK'
-        @results += (unpack_rslts raw)
-      end
-
-      def unpack_msg raw
-        @message = raw.soap_fault? ? raw.body[:fault][:faultstring] : raw.body[raw.body.keys.first][:overall_status]
-      end
-
-      def unpack_rslts raw
-        @more = (raw.body[raw.body.keys.first][:overall_status] == 'MoreDataAvailable')
-        rslts = raw.body[raw.body.keys.first][:results] || []
-        rslts = [rslts] unless rslts.kind_of? Array
-        rslts
-      rescue
-        []
-      end
-  end
-
-  class DescribeResponse < SoapResponse
-    attr_reader :properties, :retrievable, :updatable, :required, :extended, :viewable, :editable
-    private
-
-      def unpack_rslts raw
-        @retrievable, @updatable, @required, @properties, @extended, @viewable, @editable = [], [], [], [], [], [], [], []
-        definition = raw.body[raw.body.keys.first][:object_definition]
-        _props = definition[:properties]
-        _props.each do  |p|
-          @retrievable << p[:name] if p[:is_retrievable] and (p[:name] != 'DataRetentionPeriod')
-          @updatable << p[:name] if p[:is_updatable]
-          @required << p[:name] if p[:is_required]
-          @properties << p[:name]
-        end
-        # ugly, but a necessary evil
-        _exts = definition[:extended_properties].nil? ? {} : definition[:extended_properties] # if they have no extended properties nil is returned
-        _exts = _exts[:extended_property] || [] # if no properties nil and we need an array to iterate
-        _exts = [_exts] unless _exts.kind_of? Array # if they have only one extended property we need to wrap it in array to iterate
-        _exts.each do  |p|
-          @viewable << p[:name] if p[:is_viewable]
-          @editable << p[:name] if p[:is_editable]
-          @extended << p[:name]
-        end
-        @success = true # overall_status is missing from definition response, so need to set here manually
-        _props + _exts
-      rescue
-        @message = "Unable to describe #{raw.locals[:message]['DescribeRequests']['ObjectDefinitionRequest']['ObjectType']}"
-        @success = false
-        []
-      end
-  end
-
   module Soap
+    autoload :Response, 'fuelsdk/soap/response'
+    autoload :DescribeResponse, 'fuelsdk/soap/describe_response'
+    autoload :CUD, 'fuelsdk/soap/cud_module'
+    autoload :Read, 'fuelsdk/soap/read_module'
+
+    puts "Soap was loaded!"
     attr_accessor :wsdl, :debug#, :internal_token
 
     include FuelSDK::Targeting
@@ -108,7 +37,10 @@ module FuelSDK
         raise_errors: false,
         log: debug,
         open_timeout:180,
-        read_timeout: 180
+        read_timeout: 180,
+        logger: Rails.logger,
+        convert_request_keys_to: :camelcase,
+        log: true
       )
     end
 
@@ -119,10 +51,10 @@ module FuelSDK
             'ObjectType' => object_type
           }
         }
-      } 
+      }
       soap_request :describe, message
     end
-  
+
     def soap_perform object_type, action, properties
       message = {}
       message['Action'] = action
@@ -131,8 +63,8 @@ module FuelSDK
 
       soap_request :perform, message
     end
-    
-    
+
+
     def soap_configure  object_type, action, properties
      message = {}
      message['Action'] = action
@@ -144,13 +76,18 @@ module FuelSDK
      end
 
      message['Configurations'][:attributes!] = { 'Configuration' => { 'xsi:type' => ('tns:' + object_type) }}
-     
+
      soap_request :configure, message
     end
 
     def soap_get object_type, properties=nil, filter=nil
       if properties.nil? or properties.empty?
+        puts '='*500
+        puts "FuelSDL::Soap#soap_get: #{object_type}: properties.nil? or properties.empty?"
         rsp = soap_describe object_type
+        puts
+         rsp
+        puts '='*500
         if rsp.success?
           properties = rsp.retrievable
         else
@@ -166,6 +103,10 @@ module FuelSDK
       message = {'ObjectType' => object_type, 'Properties' => properties}
 
       if filter and filter.kind_of? Hash
+        puts '='*500
+        puts "FuelSDL::Soap#soap_get - filter and filter.kind_of? Hash!"
+        FuelSDK.schoff filter
+        puts '='*500
         message['Filter'] = filter
         message[:attributes!] = { 'Filter' => { 'xsi:type' => 'tns:SimpleFilterPart' } }
 
@@ -177,6 +118,12 @@ module FuelSDK
         end
       end
       message = {'RetrieveRequest' => message}
+
+        puts '='*500
+        puts "FuelSDL::Soap#soap_get: soap_request(:retrieve, message) where message is:"
+        FuelSDK.schoff message
+        puts "Message"
+        puts '='*500
 
       soap_request :retrieve, message
     end
@@ -196,15 +143,18 @@ module FuelSDK
     private
 
       def soap_cud action, object_type, properties
-		
+puts  'C'*300
+puts  "soap_cud #{action}, #{object_type},"
+puts " #{properties}"
+puts  '--'*30
 =begin
         # get a list of attributes so we can seperate
         # them from standard object properties
-        type_attrs = soap_describe(object_type).editable	
+        type_attrs = soap_describe(object_type).editable
 
 =end
         properties = [properties] unless properties.kind_of? Array
-=begin		
+=begin
         properties.each do |p|
           formated_attrs = []
           p.each do |k, v|
@@ -218,18 +168,28 @@ module FuelSDK
         end
 =end
 
+        # old: this format does not work
         message = {
           'Objects' => properties,
           :attributes! => { 'Objects' => { 'xsi:type' => ('tns:' + object_type) } }
         }
+        # new: inlining like this seems to work better
+        message = {
+          'Objects' => {'@xsi:type' => "tns:#{object_type}", :content! => properties }
+        }
+puts  '--'*30
+puts 'soap_request action, message'
+puts  "action: #{action}\n message:"
+        FuelSDK.schoff message
+puts  'C'*300
         soap_request action, message
       end
 
       def soap_request action, message
-        response = action.eql?(:describe) ? DescribeResponse : SoapResponse
+        response = action.eql?(:describe) ? FuelSDK::Soap::DescribeResponse : FuelSDK::Soap::Response
         retried = false
         begin
-          rsp = soap_client.call(action, :message => message)
+          rsp = soap_client.call(action, message: message)
         rescue
           raise if retried
           retried = true
