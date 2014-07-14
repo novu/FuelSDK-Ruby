@@ -446,9 +446,6 @@ module FuelSDK
       # opportunity for meta programming here... but need to get this out the door
       def munge_keys(target=nil)
         target ||= self.properties
-        puts '='*100
-        puts "munging KEYS #{target.class}: #{target}"
-        puts '='*100
   			if target.kind_of? Array
 
           target.map do |hash|
@@ -470,9 +467,6 @@ module FuelSDK
 
       def munge_properties(target=nil)
         target ||= self.properties
-        puts 'm'*100
-        puts "munging PROPERTIES #{target.class}: #{target}"
-        puts 'm'*100
   			if target.kind_of? Array
   			  target.map do |hash|
   				  if has_property_key_already(hash) && hash['CustomerKey']

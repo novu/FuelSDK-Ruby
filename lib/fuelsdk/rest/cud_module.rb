@@ -1,7 +1,6 @@
 module FuelSDK
   module Rest
     module CUD
-    puts "Rest::CUD was loaded!"
       def post
         client.rest_post id, properties
       end

@@ -1,7 +1,6 @@
 module FuelSDK
   module Soap
     module CUD #create, update, delete
-    puts "Soap::CUD was loaded!"
 
       def post
         if self.respond_to?('folder_property') && !self.folder_id.nil?
