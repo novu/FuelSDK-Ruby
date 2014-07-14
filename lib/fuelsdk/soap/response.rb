@@ -1,14 +1,12 @@
 module FuelSDK
   module Soap
-    puts "Response was loaded!"
     class Response < FuelSDK::Response
 
       def continue
         rsp = nil
+
         if more?
          rsp = unpack @client.soap_client.call(:retrieve, :message => {'ContinueRequest' => request_id})
-        else
-          puts 'No more data'
         end
 
         rsp

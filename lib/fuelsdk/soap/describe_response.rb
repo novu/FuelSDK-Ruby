@@ -1,6 +1,5 @@
 module FuelSDK
   module Soap
-    puts "DescribeResponse was loaded!"
 
     class DescribeResponse < FuelSDK::Soap::Response
       attr_reader :properties, :retrievable, :updatable, :required, :extended, :viewable, :editable

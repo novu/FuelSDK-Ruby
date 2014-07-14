@@ -1,7 +1,6 @@
 module FuelSDK
   module Soap
     module Read
-      puts "Soap::Read was loaded!"
       attr_accessor :filter
 
       def get(specified_id = id)

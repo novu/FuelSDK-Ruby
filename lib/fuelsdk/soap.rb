@@ -6,7 +6,6 @@ module FuelSDK
     autoload :CUD, 'fuelsdk/soap/cud_module'
     autoload :Read, 'fuelsdk/soap/read_module'
 
-    puts "Soap was loaded!"
     attr_accessor :wsdl, :debug#, :internal_token
 
     include FuelSDK::Targeting
@@ -82,12 +81,7 @@ module FuelSDK
 
     def soap_get object_type, properties=nil, filter=nil
       if properties.nil? or properties.empty?
-        puts '='*500
-        puts "FuelSDL::Soap#soap_get: #{object_type}: properties.nil? or properties.empty?"
         rsp = soap_describe object_type
-        puts
-         rsp
-        puts '='*500
         if rsp.success?
           properties = rsp.retrievable
         else
@@ -103,10 +97,7 @@ module FuelSDK
       message = {'ObjectType' => object_type, 'Properties' => properties}
 
       if filter and filter.kind_of? Hash
-        puts '='*500
-        puts "FuelSDL::Soap#soap_get - filter and filter.kind_of? Hash!"
         FuelSDK.schoff filter
-        puts '='*500
         message['Filter'] = filter
         message[:attributes!] = { 'Filter' => { 'xsi:type' => 'tns:SimpleFilterPart' } }
 
@@ -119,11 +110,7 @@ module FuelSDK
       end
       message = {'RetrieveRequest' => message}
 
-        puts '='*500
-        puts "FuelSDL::Soap#soap_get: soap_request(:retrieve, message) where message is:"
-        FuelSDK.schoff message
-        puts "Message"
-        puts '='*500
+      FuelSDK.schoff message
 
       soap_request :retrieve, message
     end
@@ -143,10 +130,6 @@ module FuelSDK
     private
 
       def soap_cud action, object_type, properties
-puts  'C'*300
-puts  "soap_cud #{action}, #{object_type},"
-puts " #{properties}"
-puts  '--'*30
 =begin
         # get a list of attributes so we can seperate
         # them from standard object properties
@@ -177,11 +160,7 @@ puts  '--'*30
         message = {
           'Objects' => {'@xsi:type' => "tns:#{object_type}", :content! => properties }
         }
-puts  '--'*30
-puts 'soap_request action, message'
-puts  "action: #{action}\n message:"
         FuelSDK.schoff message
-puts  'C'*300
         soap_request action, message
       end
 

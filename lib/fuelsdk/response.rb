@@ -12,7 +12,6 @@ module FuelSDK
       @raw = raw
       unpack raw
     rescue => ex # all else fails return raw
-      puts ex.message
       raw
     end
 
