@@ -1,4 +1,5 @@
 require 'savon'
+
 module FuelSDK
   module Soap
     autoload :Response, 'fuelsdk/soap/response'
@@ -38,8 +39,7 @@ module FuelSDK
         open_timeout:180,
         read_timeout: 180,
         logger: Rails.logger,
-        convert_request_keys_to: :camelcase,
-        log: true
+        convert_request_keys_to: :camelcase
       )
     end
 
@@ -97,7 +97,6 @@ module FuelSDK
       message = {'ObjectType' => object_type, 'Properties' => properties}
 
       if filter and filter.kind_of? Hash
-        FuelSDK.schoff filter
         message['Filter'] = filter
         message[:attributes!] = { 'Filter' => { 'xsi:type' => 'tns:SimpleFilterPart' } }
 
@@ -109,8 +108,6 @@ module FuelSDK
         end
       end
       message = {'RetrieveRequest' => message}
-
-      FuelSDK.schoff message
 
       soap_request :retrieve, message
     end
@@ -160,7 +157,6 @@ module FuelSDK
         message = {
           'Objects' => {'@xsi:type' => "tns:#{object_type}", :content! => properties }
         }
-        FuelSDK.schoff message
         soap_request action, message
       end
 
