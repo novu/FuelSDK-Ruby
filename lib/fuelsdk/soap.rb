@@ -97,7 +97,6 @@ module FuelSDK
       message = {'ObjectType' => object_type, 'Properties' => properties}
 
       if filter and filter.kind_of? Hash
-        FuelSDK.schoff filter
         message['Filter'] = filter
         message[:attributes!] = { 'Filter' => { 'xsi:type' => 'tns:SimpleFilterPart' } }
 
@@ -109,8 +108,6 @@ module FuelSDK
         end
       end
       message = {'RetrieveRequest' => message}
-
-      FuelSDK.schoff message
 
       soap_request :retrieve, message
     end
@@ -160,7 +157,6 @@ module FuelSDK
         message = {
           'Objects' => {'@xsi:type' => "tns:#{object_type}", :content! => properties }
         }
-        FuelSDK.schoff message
         soap_request action, message
       end
 
