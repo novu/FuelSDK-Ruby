@@ -1,4 +1,5 @@
 require 'savon'
+
 module FuelSDK
   module Soap
     autoload :Response, 'fuelsdk/soap/response'
@@ -38,8 +39,7 @@ module FuelSDK
         open_timeout:180,
         read_timeout: 180,
         logger: Rails.logger,
-        convert_request_keys_to: :camelcase,
-        log: true
+        convert_request_keys_to: :camelcase
       )
     end
 
