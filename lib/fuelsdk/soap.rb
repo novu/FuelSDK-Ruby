@@ -96,17 +96,21 @@ module FuelSDK
 
       message = {'ObjectType' => object_type, 'Properties' => properties}
 
-      if filter and filter.kind_of? Hash
-        message['Filter'] = filter
-        message[:attributes!] = { 'Filter' => { 'xsi:type' => 'tns:SimpleFilterPart' } }
+      if filter && filter.kind_of?(Hash)
+        fhash = filter.dup
+        fhash['@xsi:type'] = 'tns:SimpleFilterPart'
 
         if filter.has_key?('LogicalOperator')
-          message[:attributes!] = { 'Filter' => { 'xsi:type' => 'tns:ComplexFilterPart' }}
-          message['Filter'][:attributes!] = {
-            'LeftOperand' => { 'xsi:type' => 'tns:SimpleFilterPart' },
-            'RightOperand' => { 'xsi:type' => 'tns:SimpleFilterPart' }}
+          fhash['@xsi:type']  = 'tns:ComplexFilterPart'
+          fhash[:attributes!] = {
+            'LeftOperand'  => { 'xsi:type' => 'tns:SimpleFilterPart' },
+            'RightOperand' => { 'xsi:type' => 'tns:SimpleFilterPart' }
+          }
         end
+
+        message['Filter'] = fhash
       end
+
       message = {'RetrieveRequest' => message}
 
       soap_request :retrieve, message
@@ -127,44 +131,20 @@ module FuelSDK
     private
 
       def soap_cud action, object_type, properties
-=begin
-        # get a list of attributes so we can seperate
-        # them from standard object properties
-        type_attrs = soap_describe(object_type).editable
-
-=end
-        properties = [properties] unless properties.kind_of? Array
-=begin
-        properties.each do |p|
-          formated_attrs = []
-          p.each do |k, v|
-            if type_attrs.include? k
-              p.delete k
-              attrs = FuelSDK.format_name_value_pairs k => v
-              formated_attrs.concat attrs
-            end
-          end
-          (p['Attributes'] ||= []).concat formated_attrs unless formated_attrs.empty?
-        end
-=end
-
-        # old: this format does not work
         message = {
-          'Objects' => properties,
-          :attributes! => { 'Objects' => { 'xsi:type' => ('tns:' + object_type) } }
-        }
-        # new: inlining like this seems to work better
-        message = {
-          'Objects' => {'@xsi:type' => "tns:#{object_type}", :content! => properties }
+          'Objects' => { '@xsi:type' => "tns:#{object_type}", :content! => Array(properties) }
         }
         soap_request action, message
       end
 
       def soap_request action, message
         response = action.eql?(:describe) ? FuelSDK::Soap::DescribeResponse : FuelSDK::Soap::Response
+
         retried = false
+
         begin
-          rsp = soap_client.call(action, message: message)
+          # NOTE: Rails dependency here
+          rsp = soap_client.call(action, message: message.deep_dup)
         rescue
           raise if retried
           retried = true

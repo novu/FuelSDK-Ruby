@@ -1,5 +1,6 @@
 module FuelSDK
   module_function
+
     def format_name_value_pairs attributes
       attrs = []
       attributes.each do |name, value|
@@ -8,9 +9,16 @@ module FuelSDK
 
       attrs
     end
+
     def format_props attributes
       attributes.map do |property_value_pair|
-        Hash[['Name','Value'].zip(property_value_pair)]
+        name, value = property_value_pair
+
+        if value.nil?
+          { '@xsi:type' => "tns:NullAPIProperty", 'Name' => name }
+        else
+          { 'Name' => name, 'Value' => value }
+        end
       end
     end
 
