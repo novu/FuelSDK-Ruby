@@ -16,7 +16,10 @@ module FuelSDK
 				self.id 			 = client_config[:id]        || client_config['id']
 				self.secret 	 = client_config[:secret]    || client_config['secret']
 				self.signature = client_config[:signature] || client_config['signature']
+ 				@api_auth_token_url = client_config[:api_auth_token_url] || client_config['api_auth_token_url']
 			end
+			@api_auth_token_url ||= 'https://auth.exacttargetapis.com/v1/requestToken' # default production host
+			# https://auth-test.exacttargetapis.com/v1/requestToken is used for the sandbox API
 
 			self.jwt 					 = params[:jwt]           || params['jwt']
 			self.refresh_token = params[:refresh_token] || params['refresh_token']
@@ -54,6 +57,7 @@ module FuelSDK
 					'params'       => {legacy: 1}
 				}
 				response = post("https://auth.exacttargetapis.com/v1/requestToken", options)
+				response = post(api_auth_token_url, options)
 				raise "Unable to refresh token: #{response['message']}" unless response.has_key?('accessToken')
 
 				self.access_token   			 = response['accessToken']
