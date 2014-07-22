@@ -1,9 +1,11 @@
 require 'securerandom'
 module FuelSDK
-
+  # http://help.exacttarget.com/en-US/technical_library/xml_api/xml_api_calls_and_sample_code/api_error_codes/error_code_numbers_and_descriptions/
 	class Client
-		attr_accessor :debug, :access_token, :auth_token, :internal_token, :refresh_token,
-			:id, :secret, :signature, :package_name, :package_folders, :parent_folders, :auth_token_expiration
+		attr_accessor :debug, :access_token, :internal_token, :refresh_token,
+			:id, :secret, :signature, :package_name, :package_folders, :parent_folders,
+			:auth_token, :auth_token_expiration
+		attr_reader :api_auth_token_url
 
 		include FuelSDK::Soap
 		include FuelSDK::Rest
@@ -16,7 +18,10 @@ module FuelSDK
 				self.id 			 = client_config[:id]        || client_config['id']
 				self.secret 	 = client_config[:secret]    || client_config['secret']
 				self.signature = client_config[:signature] || client_config['signature']
+ 				@api_auth_token_url = client_config[:api_auth_token_url] || client_config['api_auth_token_url']
 			end
+			@api_auth_token_url ||= 'https://auth.exacttargetapis.com/v1/requestToken' # default production host
+			# https://auth-test.exacttargetapis.com/v1/requestToken is used for the sandbox API
 
 			self.jwt 					 = params[:jwt]           || params['jwt']
 			self.refresh_token = params[:refresh_token] || params['refresh_token']
@@ -54,6 +59,7 @@ module FuelSDK
 					'params'       => {legacy: 1}
 				}
 				response = post("https://auth.exacttargetapis.com/v1/requestToken", options)
+				response = post(api_auth_token_url, options)
 				raise "Unable to refresh token: #{response['message']}" unless response.has_key?('accessToken')
 
 				self.access_token   			 = response['accessToken']
