@@ -58,7 +58,7 @@ module FuelSDK
 					'content_type' => 'application/json',
 					'params'       => {legacy: 1}
 				}
-				response = post("https://auth.exacttargetapis.com/v1/requestToken", options)
+
 				response = post(api_auth_token_url, options)
 				raise "Unable to refresh token: #{response['message']}" unless response.has_key?('accessToken')
 
