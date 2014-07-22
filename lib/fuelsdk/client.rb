@@ -1,9 +1,11 @@
 require 'securerandom'
 module FuelSDK
-
+  # http://help.exacttarget.com/en-US/technical_library/xml_api/xml_api_calls_and_sample_code/api_error_codes/error_code_numbers_and_descriptions/
 	class Client
-		attr_accessor :debug, :access_token, :auth_token, :internal_token, :refresh_token,
-			:id, :secret, :signature, :package_name, :package_folders, :parent_folders, :auth_token_expiration
+		attr_accessor :debug, :access_token, :internal_token, :refresh_token,
+			:id, :secret, :signature, :package_name, :package_folders, :parent_folders,
+			:auth_token, :auth_token_expiration
+		attr_reader :api_auth_token_url
 
 		include FuelSDK::Soap
 		include FuelSDK::Rest
