@@ -208,22 +208,6 @@ module FuelSDK
       'ImportDefinition'
     end
 
-    def post
-      originalProp = properties
-      cleanProps
-      obj = super
-      properties = originalProp
-      return obj
-    end
-
-    def patch
-      originalProp = properties
-      cleanProps
-      obj = super
-      properties = originalProp
-      return obj
-    end
-
     def start
       perform_response = client.soap_perform id, 'start' , properties
       if perform_response.status then
@@ -233,21 +217,29 @@ module FuelSDK
     end
 
     def status
-      client.soap_get 'ImportResultsSummary', ['ImportDefinitionCustomerKey','TaskResultID','ImportStatus','StartDate','EndDate','DestinationID','NumberSuccessful','NumberDuplicated','NumberErrors','TotalRows','ImportType'], {'Property' => 'TaskResultID','SimpleOperator' => 'equals','Value' => @last_task_id}
+      client.soap_get 'ImportResultsSummary', [
+        'ImportDefinitionCustomerKey',
+        'TaskResultID',
+        'ImportStatus',
+        'StartDate',
+        'EndDate',
+        'DestinationID',
+        'NumberSuccessful',
+        'NumberDuplicated',
+        'NumberErrors',
+        'TotalRows',
+        'ImportType'
+      ],
+      {
+        'Property' => 'TaskResultID',
+        'SimpleOperator' => 'equals',
+        'Value' => @last_task_id
+      }
     end
 
     private
 
     attr_accessor :last_task_id
-
-    def cleanProps
-      # If the ID property is specified for the destination then it must be a list import
-      if properties.has_key?('DestinationObject') then
-        if properties['DestinationObject'].has_key?('ID') then
-          properties[:attributes!] = { 'DestinationObject' => { 'xsi:type' => 'tns:List'}}
-        end
-      end
-    end
   end
 
 
