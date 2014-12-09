@@ -24,6 +24,7 @@ module FuelSDK
 			# https://auth-test.exacttargetapis.com/v1/requestToken is used for the sandbox API
 
 			self.jwt 					 = params[:jwt]           || params['jwt']
+# See: https://code.exacttarget.com/apis-sdks/soap-api/using-the-api-key-to-authenticate-api-calls.html
 			self.refresh_token = params[:refresh_token] || params['refresh_token']
 			self.wsdl 				 = params[:defaultwsdl]   || params['defaultwsdl']
 		end
@@ -59,8 +60,19 @@ module FuelSDK
 					'params'       => {legacy: 1}
 				}
 
-				response = post(api_auth_token_url, options)
-				raise "Unable to refresh token: #{response['message']}" unless response.has_key?('accessToken')
+				response = post(api_auth_token_url, refresh_options(payload))
+				if response['message'] == 'Unauthorized' && payload[:refreshToken].present?
+					old_token = payload.delete(:refreshToken)
+					Rails.logger.info "[FuelSDK] Token refresh Unauthorized. Retrying after dumping old refreshToken: '#{old_token}'"
+					response = post(api_auth_token_url, refresh_options(payload))
+				end
+
+				if response.has_key?('accessToken')
+					Rails.logger.info "[FuelSDK] Auth Refresh Response Success: #{response}"
+				else
+					Rails.logger.error "[FuelSDK] Token refresh Failed. Response: #{response}"
+					raise "Unable to refresh token: #{response['message']}"
+				end
 
 				self.access_token   			 = response['accessToken']
 				self.internal_token 		   = response['legacyToken']
@@ -70,6 +82,13 @@ module FuelSDK
 			end
 		end
 
+		def refresh_options(payload)
+			{
+				'data'         =>  payload,
+				'content_type' => 'application/json',
+				'params'       => {legacy: 1}
+			}
+		end
 
 		def refresh!
 			refresh true
