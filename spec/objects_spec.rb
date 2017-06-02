@@ -345,7 +345,7 @@ describe FuelSDK::DataExtension::Row do
   describe '#name' do
     it 'raises error when missing both name and customer key' do
       expect{ subject.name }.to raise_error('Unable to process DataExtension::Row '\
-        'request due to missing CustomerKey and Name')
+        'request due to missing both CustomerKey and Name')
     end
 
     it 'returns value' do
@@ -357,7 +357,7 @@ describe FuelSDK::DataExtension::Row do
   describe '#customer_key' do
     it 'raises error when missing both name and customer key' do
       expect{ subject.customer_key }.to raise_error('Unable to process DataExtension::Row '\
-        'request due to missing CustomerKey and Name')
+        'request due to missing both CustomerKey and Name')
     end
 
     it 'returns value' do
@@ -369,9 +369,9 @@ describe FuelSDK::DataExtension::Row do
   describe '#require_name_and_customer_key' do
     it 'raises error when missing both name and customer key' do
       expect{ subject.send(:require_name_and_customer_key)}.to raise_error('Unable to process DataExtension::Row '\
-        'request due to missing CustomerKey and Name')
+        'request due to missing both CustomerKey and Name')
       expect{ subject.name }.to raise_error('Unable to process DataExtension::Row '\
-        'request due to missing CustomerKey and Name')
+        'request due to missing both CustomerKey and Name')
     end
 
     it 'updates missing' do
@@ -417,7 +417,7 @@ describe FuelSDK::DataExtension::Row do
     it 'raises an error when missing both name and customer key' do
       subject.properties = [{'Name' => 'Some DE'}, {'Name' => 'Some DE'}]
       expect{subject.post}.to raise_error('Unable to process DataExtension::Row ' \
-        'request due to missing CustomerKey and Name')
+        'request due to missing both CustomerKey and Name')
     end
 
     it 'uses explicitly defined properties' do
@@ -437,7 +437,7 @@ describe FuelSDK::DataExtension::Row do
       expect(subject.post).to eq([
         'DataExtensionObject', [{
           'CustomerKey' => 'Subscribers',
-          'Properties' => {'Property' => [{'Name' => 'Name', 'Value' => 'Justin'}]}}]
+          'Properties' => {'Property' => [{'Name' => 'Properties', 'Value' => {'Property' => [{'Name' => 'Name', 'Value' => 'Justin'}]}}]}}]
       ])
     end
 
@@ -455,7 +455,7 @@ describe FuelSDK::DataExtension::Row do
       expect(subject.post).to eq([
         'DataExtensionObject', [{
           'CustomerKey' => 'ProductsKey',
-          'Properties' => {'Property' => [{'Name' => 'Name', 'Value' => 'Justin'}]}}]
+          'Properties' => {'Property' => [{'Name' => 'Properties', 'Value' => {'Property' => [{'Name' => 'Name', 'Value' => 'Justin'}]}}]}}]
       ])
     end
 
