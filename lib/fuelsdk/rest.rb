@@ -3,6 +3,9 @@ module FuelSDK
 
     include FuelSDK::Targeting
 
+    def rest_client
+      self
+    end
 
     def rest_get( url, properties={} )
       url, properties = parse_properties url, properties

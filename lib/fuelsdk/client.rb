@@ -33,7 +33,7 @@ module FuelSDK
 		def jwt=(encoded_jwt)
 			return if encoded_jwt.nil? or encoded_jwt.empty?
 			raise 'Require app signature to decode JWT' unless self.signature
-			decoded_jwt = JWT.decode(encoded_jwt, self.signature, true)['request']
+			decoded_jwt = JWT.decode(encoded_jwt, self.signature, true).first['request']
 
 			self.auth_token            = decoded_jwt['user']['oauthToken']
 			self.internal_token        = decoded_jwt['user']['internalOauthToken']
