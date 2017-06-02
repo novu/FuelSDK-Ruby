@@ -3,7 +3,6 @@ module FuelSDK
 
     include FuelSDK::Targeting
 
-
     def rest_get( url, properties={} )
       url, properties = parse_properties url, properties
       rest_request :get, url, {'params' => properties}
