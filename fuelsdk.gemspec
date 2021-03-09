@@ -25,6 +25,6 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "guard-rspec"
 
   spec.add_dependency "savon", "~>2.3"
-  spec.add_dependency "json", "~> 1.7"
+  spec.add_dependency "json", ">= 1.7", "< 3.0"
   spec.add_dependency "jwt", "~> 1.0"
 end
